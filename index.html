@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>视频作品管理平台</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- 顶部标题栏 -->
+    <header class="app-header">
+        <h1 class="app-title">视频作品管理</h1>
+    </header>
+
+    <!-- 未配置提示 -->
+    <div id="configBanner" class="config-banner" style="display:none;">
+        <p>⚠️ 系统尚未配置，请先编辑 <code>config.js</code> 填入 Supabase 连接信息</p>
+    </div>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <!-- ========== 提交页 ========== -->
+        <section id="submitPage" class="page active">
+            <div class="page-desc">填写视频信息或粘贴文本自动解析</div>
+
+            <form id="submitForm" class="form-card" autocomplete="off">
+                <div class="form-group">
+                    <label>报送单位 <span class="required">*</span></label>
+                    <select id="submitUnit" required>
+                        <option value="">请选择</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>发布平台 <span class="required">*</span></label>
+                    <select id="submitPlatform" required>
+                        <option value="">请选择</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>视频标题 <span class="required">*</span></label>
+                    <input type="text" id="submitTitle" placeholder="输入视频标题" required>
+                </div>
+
+                <div class="form-group">
+                    <label>视频链接 <span class="required">*</span></label>
+                    <input type="url" id="submitLink" placeholder="粘贴视频链接" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>作者</label>
+                        <input type="text" id="submitAuthor" placeholder="作者名称">
+                    </div>
+                    <div class="form-group">
+                        <label>播放量</label>
+                        <input type="number" id="submitViews" placeholder="数字" min="0">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">提交</button>
+            </form>
+
+            <!-- 批量粘贴区 -->
+            <div class="section-card">
+                <div class="section-header" id="batchToggle">
+                    <span>📋 批量粘贴解析</span>
+                    <span class="expand-icon" id="batchIcon">▶</span>
+                </div>
+                <div class="section-body" id="batchSection" style="display:none;">
+                    <textarea id="batchText" placeholder="粘贴文本，每行一条记录，字段用 Tab、逗号或 | 分隔&#10;&#10;支持格式示例：&#10;抖音	标题	https://v.douyin.com/xxx	作者名	12000&#10;微博|标题|https://...|作者|8000&#10;报送单位: 抖音&#10;标题: xxx&#10;链接: https://..." rows="6"></textarea>
+                    <button class="btn btn-outline btn-block" id="parseBtn">解析文本</button>
+                    <div id="parsePreview" class="parse-preview" style="display:none;"></div>
+                </div>
+            </div>
+
+            <!-- 最近提交 -->
+            <div class="section-card">
+                <div class="section-header">
+                    <span>📝 最近提交</span>
+                    <span class="badge" id="recentCount">0</span>
+                </div>
+                <div class="section-body">
+                    <div id="recentList" class="item-list">
+                        <div class="empty-state">暂无提交记录</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== 审核页 ========== -->
+        <section id="reviewPage" class="page">
+            <!-- 访问密码 -->
+            <div id="reviewAuth" class="auth-card">
+                <div class="auth-icon">🔒</div>
+                <p>请输入审核访问码</p>
+                <input type="password" id="reviewPassword" placeholder="输入访问码">
+                <button class="btn btn-primary btn-block" id="reviewAuthBtn">进入</button>
+            </div>
+
+            <!-- 审核面板 -->
+            <div id="reviewPanel" style="display:none;">
+                <div class="filter-bar">
+                    <div class="filter-row">
+                        <select id="filterUnit" class="filter-select">
+                            <option value="">全部单位</option>
+                        </select>
+                        <select id="filterPlatform" class="filter-select">
+                            <option value="">全部平台</option>
+                        </select>
+                    </div>
+                    <div class="filter-row">
+                        <div class="status-tabs">
+                            <button class="status-tab active" data-status="">全部</button>
+                            <button class="status-tab" data-status="待审核">待审核</button>
+                            <button class="status-tab" data-status="已通过">已通过</button>
+                            <button class="status-tab" data-status="不通过">不通过</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-bar" id="statsBar">
+                    <span>共 <strong id="totalCount">0</strong> 条</span>
+                    <span class="stats-divider">|</span>
+                    <span>待审核 <strong id="pendingCount">0</strong></span>
+                    <span class="stats-divider">|</span>
+                    <span>已通过 <strong id="passedCount">0</strong></span>
+                </div>
+
+                <div id="reviewList" class="item-list"></div>
+            </div>
+        </section>
+
+        <!-- ========== 导出页 ========== -->
+        <section id="exportPage" class="page">
+            <div class="filter-bar">
+                <select id="exportUnit" class="filter-select">
+                    <option value="">全部单位</option>
+                </select>
+                <select id="exportPlatform" class="filter-select">
+                    <option value="">全部平台</option>
+                </select>
+                <div class="status-tabs" style="margin-top:8px;">
+                    <button class="export-status-tab active" data-status="">全部</button>
+                    <button class="export-status-tab" data-status="已通过">已通过</button>
+                    <button class="export-status-tab" data-status="待审核">待审核</button>
+                </div>
+            </div>
+
+            <div id="exportPreview" class="export-preview">
+                <div class="empty-state">选择筛选条件后预览导出数据</div>
+            </div>
+
+            <div class="export-actions">
+                <div class="select-row">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="selectAllExport" checked>
+                        <span>全选</span>
+                    </label>
+                    <span id="exportCount">0 条</span>
+                </div>
+                <button class="btn btn-primary btn-block" id="copyExportBtn">📋 复制全部文本</button>
+                <button class="btn btn-outline btn-block" id="copyCsvBtn">📊 复制表格格式</button>
+            </div>
+        </section>
+    </main>
+
+    <!-- 详情弹窗 -->
+    <div id="detailModal" class="modal" style="display:none;">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>作品详情</h3>
+                <button class="modal-close" id="modalCloseBtn">&times;</button>
+            </div>
+            <div class="modal-body" id="detailBody"></div>
+            <div class="modal-footer" id="detailFooter"></div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Loading -->
+    <div id="loading" class="loading" style="display:none;">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- 底部导航 -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" data-page="submitPage">
+            <span class="nav-icon">📤</span>
+            <span class="nav-label">提交</span>
+        </button>
+        <button class="nav-item" data-page="reviewPage">
+            <span class="nav-icon">📋</span>
+            <span class="nav-label">审核</span>
+        </button>
+        <button class="nav-item" data-page="exportPage">
+            <span class="nav-icon">📤</span>
+            <span class="nav-label">导出</span>
+        </button>
+    </nav>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

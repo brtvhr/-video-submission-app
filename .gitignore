@@ -1,0 +1,18 @@
+# Vercel
+.vercel
+
+# Dependencies
+node_modules
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Environment variables (local dev only)
+.env
